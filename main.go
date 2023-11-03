@@ -16,6 +16,8 @@ const (
 )
 
 func main() {
+	log.Println("Программа запущена")
+	defer log.Println("Программа завершила работу")
 	dataSource := func() (<-chan int, <-chan bool) {
 		c := make(chan int)
 		done := make(chan bool)
@@ -27,7 +29,6 @@ func main() {
 				scanner.Scan()
 				data = scanner.Text()
 				if strings.EqualFold(data, "exit") {
-					log.Println("Программа завершила работу!")
 					return
 				}
 				i, err := strconv.Atoi(data)
@@ -49,7 +50,9 @@ func main() {
 					if data > 0 {
 						select {
 						case convertedIntChan <- data:
+							log.Println("Число прошло через negativeFilterStageInt")
 						case <-done:
+							log.Println("NegativeFilterStageInt завершила работу.")
 							return
 						}
 					}
@@ -69,7 +72,9 @@ func main() {
 					if data != 0 && data%3 == 0 {
 						select {
 						case filteredIntChan <- data:
+							log.Println("Число прошло через specialFilterStageInt")
 						case <-done:
+							log.Println("SpecialFilterStageInt завершила работу.")
 							return
 						}
 					}
@@ -88,7 +93,9 @@ func main() {
 				select {
 				case data := <-c:
 					buffer.Push(data)
+					log.Println("Данные добавлены в буфер в bufferStageInt")
 				case <-done:
+					log.Println("BufferStageInt завершила работу.")
 					return
 				}
 			}
@@ -102,12 +109,15 @@ func main() {
 						for _, data := range bufferData {
 							select {
 							case bufferedIntChan <- data:
+								log.Println("Данные отправлены из буфера в bufferStageInt")
 							case <-done:
+								log.Println("BufferStageInt завершила работу.")
 								return
 							}
 						}
 					}
 				case <-done:
+					log.Println("BufferStageInt завершила работу.")
 					return
 				}
 			}
@@ -120,12 +130,16 @@ func main() {
 			case data := <-c:
 				log.Printf("Обработаны данные: %d\n", data)
 			case <-done:
+				log.Println("Consumer завершил работу.")
 				return
 			}
 		}
 	}
 
+	log.Println("Запуск источника данных")
 	source, done := dataSource()
+	log.Println("Запуск пайплайна")
 	pipeline := model.NewPipelineInt(done, negativeFilterStageInt, specialFilterStageInt, bufferStageInt)
+	log.Println("Запуск потребителя")
 	consumer(done, pipeline.Run(source))
 }
